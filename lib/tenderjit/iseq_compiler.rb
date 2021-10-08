@@ -437,6 +437,18 @@ class TenderJIT
       end
     end
 
+    def handle_checkkeyword kw_bits_index, keyword_index
+      address = Fiddle::Handle::DEFAULT["vm_check_keyword"]
+      keyword_index_loc = @temp_stack.pop
+      kw_bits_index_loc = @temp_stack.pop
+      result_loc = @temp_stack.push :boolean
+
+      with_runtime do |rt|
+        result = rt.call_cfunc_without_alignment(address, [kw_bits_index_loc, keyword_index, RbControlFrameStruct.offsetof("ep")])
+        rt.write result_loc, result
+      end
+    end
+
     def handle_getinstancevariable id, ic
       req = IVarRequest.new(id, current_pc, next_pc, @temp_stack.size)
 
