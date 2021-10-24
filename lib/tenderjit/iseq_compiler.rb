@@ -1408,13 +1408,26 @@ class TenderJIT
     # - `flag`: end exclusion; see `range.c#range_init()`.
     def handle_newrange flag
       rb_range_new = Fiddle::Handle::DEFAULT["rb_range_new"]
+      range_init = Fiddle::Handle::DEFAULT["range_init"] # Wrong; Fiddle::Handle[...] also not working
+      rb_obj_alloc = Fiddle::Handle::DEFAULT["rb_obj_alloc"]
+      rb_cRange = Fiddle::Handle::DEFAULT["rb_cRange"] # Wrong
 
       high = @temp_stack.pop
       low = @temp_stack.pop
 
       with_runtime do |rt|
-        rt.call_cfunc rb_range_new, [low, high, flag]
-        rt.push rt.return_value, name: :range
+        result = @temp_stack.push :range
+
+        rt.push_reg REG_BP
+
+        # VALUE range = rb_obj_alloc(rb_cRange);
+        rt.call_cfunc_without_alignment rb_obj_alloc, [rb_cRange]
+        rt.write result, rt.return_value
+
+        # range_init(range, beg, end, RBOOL(exclude_end));
+        rt.call_cfunc_without_alignment range_init, [result, low, high, flag]
+
+        rt.pop_reg REG_BP
       end
     end
 
