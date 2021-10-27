@@ -1920,6 +1920,37 @@ class TenderJIT
       compare_fixnum { |reg0, reg1| __.cmovle(reg0, reg1) }
     end
 
+    # (CALL_DATA cd_eq, CALL_DATA cd)
+    # (VALUE recv, VALUE obj)
+    # (VALUE val)
+    # {
+    #     val = vm_opt_neq(GET_ISEQ(), cd, cd_eq, recv, obj);
+    #
+    #     if (val == Qundef) {
+    #         CALL_SIMPLE_METHOD();
+    #     }
+    # }
+    def handle_opt_neq call_data_eq, call_data
+      vm_opt_neq = Fiddle::Handle::DEFAULT["vm_opt_neq"]
+
+      obj = @temp_stack.pop
+      recv = @temp_stack.pop
+
+      with_runtime do |rt|
+        cfp_ptr = rt.pointer(REG_CFP, type: RbControlFrameStruct)
+
+        rt.call_cfunc vm_opt_neq, [
+          cfp_ptr.iseq, call_dapta, call_data_eq, recv, obj
+        ]
+
+        val = @temp_stack.push rt.return_value, name: :unknown
+
+        rt.if_eq(rt.return_value, Fisk::Imm64.new(Qundef)) {
+          raise
+        }.else {}
+      end
+    end
+
     def handle_putobject_INT2FIX_1_
       with_runtime do |rt|
         rt.push Fisk::Imm64.new(0x3), name: T_FIXNUM
