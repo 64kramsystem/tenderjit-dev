@@ -1,2 +1,5 @@
 lib/tenderjit/ruby
 Gemfile.lock
+
+# From optcarrot
+/audio.wav
