@@ -14,6 +14,7 @@ class TenderJIT
       yield self if block_given?
     end
 
+    # @return [void]
     def flush_pc_and_sp pc, sp
       cfp_ptr = pointer REG_CFP, type: RbControlFrameStruct
       cfp_ptr.pc = pc
@@ -23,6 +24,7 @@ class TenderJIT
       end
     end
 
+    # @return [void]
     def load_address_in dest, src
       if src.memory?
         offset = src.displacement
@@ -34,6 +36,7 @@ class TenderJIT
       @fisk.lea(dest, @fisk.m(reg, offset))
     end
 
+    # @return [void]
     def check_vm_stack_overflow temp_stack, exit_location, local_size, stack_max
       margin = ((local_size + stack_max) * Fiddle::SIZEOF_VOIDP) + RbControlFrameStruct.byte_size
 
@@ -55,11 +58,13 @@ class TenderJIT
     end
 
     # Converts the Ruby Number stored in +val+ to an int
+    # @return [void]
     def FIX2LONG val
       @fisk.sar(cast_to_fisk(val), @fisk.lit(1))
     end
 
     # Converts an int to a Ruby Number
+    # @return [void]
     def INT2NUM val
       @fisk.shl(cast_to_fisk(val), @fisk.lit(1))
       @fisk.inc(cast_to_fisk(val))
@@ -70,29 +75,35 @@ class TenderJIT
       @fisk.rax
     end
 
+    # @return [void]
     def return_value= v
       @fisk.mov @fisk.rax, v
     end
 
+    # @return [void]
     def patchable_jump dest
       @fisk.lea(return_value, @fisk.rip)
       jump dest
     end
 
+    # @return [void]
     def patchable_call dest
       @fisk.call(@fisk.absolute(dest))
     end
 
+    # @return [void]
     def call dest
       @fisk.call(dest)
     end
 
     # Get the register for the i'th parameter in the C calling convention
+    # @return [void]
     def c_param i
       Fisk::Registers::CALLER_SAVED.fetch i
     end
 
     # Set the register for the i'th parameter in the C calling convention
+    # @return [void]
     def set_c_param i, v
       @fisk.mov Fisk::Registers::CALLER_SAVED.fetch(i), v
     end
@@ -107,6 +118,7 @@ class TenderJIT
       @fisk.pop REG_BP.to_register  # alignment
     end
 
+    # @return [void]
     def rb_funcall_without_alignment recv, method_name, params
       raise "Too many parameters!" if params.length > 3
 
@@ -150,18 +162,22 @@ class TenderJIT
       end
     end
 
+    # @return [void]
     def and reg, num
       @fisk.and(reg, cast_to_fisk(num))
     end
 
+    # @return [void]
     def or reg, num
       @fisk.or(reg, cast_to_fisk(num))
     end
 
+    # @return [void]
     def xor reg, num
       @fisk.xor(reg, cast_to_fisk(num))
     end
 
+    # @return [void]
     def flush
       write!
       @fisk = Fisk.new
@@ -170,6 +186,7 @@ class TenderJIT
     # Writes to the buffer, and freezes the instance.
     # Returns the buffer, for convenience.
     #
+    # @return [void]
     def write!
       @fisk.assign_registers(TenderJIT::ISEQCompiler::SCRATCH_REGISTERS, local: true)
       @fisk.write_to(@jit_buffer)
@@ -177,22 +194,27 @@ class TenderJIT
       @jit_buffer
     end
 
+    # @return [void]
     def pointer reg, type: Fiddle::TYPE_VOIDP, offset: 0
       Pointer.new reg.to_register, type, find_size(type), offset, self
     end
 
+    # @return [void]
     def sub reg, val
       @fisk.sub reg, cast_to_fisk(val)
     end
 
+    # @return [void]
     def add reg, val
       @fisk.add reg.to_register, cast_to_fisk(val)
     end
 
+    # @return [void]
     def inc reg
       @fisk.inc reg
     end
 
+    # @return [void]
     def mult val1, val2
       raise NotImplementedError unless val1.memory?
       raise NotImplementedError unless val2.memory?
@@ -219,6 +241,7 @@ class TenderJIT
     # Performs a 64-bit division.
     # Returns RAX, with the result.
     #
+    # @return [void]
     def div dividend_val, divisor_val
       perform_division dividend_val, divisor_val, @fisk.rax
     end
@@ -226,6 +249,7 @@ class TenderJIT
     # Performs a 64-bit modulo.
     # Returns RDX, with the result.
     #
+    # @return [void]
     def mod dividend_val, divisor_val
       perform_division dividend_val, divisor_val, @fisk.rdx
     end
@@ -239,6 +263,7 @@ class TenderJIT
     #
     # Reference: https://www.cs.uaf.edu/2006/fall/cs301/support/x86_64.
     #
+    # @return [void]
     def perform_division dividend_val, divisor_val, register
       raise NotImplementedError unless dividend_val.memory?
       raise NotImplementedError unless divisor_val.memory?
@@ -261,6 +286,7 @@ class TenderJIT
     end
     private :perform_division
 
+    # @return [void]
     def write_memory reg, offset, val
       @fisk.with_register do |tmp|
         @fisk.mov(tmp, val)
@@ -268,10 +294,12 @@ class TenderJIT
       end
     end
 
+    # @return [void]
     def write_register reg, offset, val
       @fisk.mov(@fisk.m64(reg, offset), val)
     end
 
+    # @return [void]
     def write_immediate reg, offset, val
       @fisk.with_register do |tmp|
         @fisk.mov(tmp, @fisk.uimm(val))
@@ -279,10 +307,12 @@ class TenderJIT
       end
     end
 
+    # @return [void]
     def write_immediate_to_reg reg, val
       @fisk.mov(reg, @fisk.uimm(val))
     end
 
+    # @return [void]
     def read_to_reg src, offset
       @fisk.with_register do |tmp|
         @fisk.mov(tmp, @fisk.m64(src, offset))
@@ -290,6 +320,7 @@ class TenderJIT
       end
     end
 
+    # @return [void]
     def with_ref reg, offset = 0
       if reg.memory?
         offset = reg.displacement
@@ -301,10 +332,12 @@ class TenderJIT
       end
     end
 
+    # @return [void]
     def write_to_mem dst, offset, src
       @fisk.mov(@fisk.m64(dst, offset), src)
     end
 
+    # @return [void]
     def write dst, src
       dst = cast_to_fisk dst
       src = cast_to_fisk src
@@ -319,24 +352,29 @@ class TenderJIT
       end
     end
 
+    # @return [void]
     def movsd reg, source
       @fisk.movsd reg, cast_to_fisk(source)
     end
 
+    # @return [void]
     def break
       @fisk.int(@fisk.lit(3))
     end
 
     # Shift op1 right by op2
+    # @return [void]
     def shr op1, op2
       @fisk.shr cast_to_fisk(op1), cast_to_fisk(op2)
     end
 
     # Shift op1 left by op2
+    # @return [void]
     def shl op1, op2
       @fisk.shl cast_to_fisk(op1), cast_to_fisk(op2)
     end
 
+    # @return [void]
     def test_flags obj, flags
       lhs = cast_to_fisk obj
       rhs = cast_to_fisk flags
@@ -352,15 +390,19 @@ class TenderJIT
     RBIMPL_VALUE_FULL = UINTPTR_MAX
 
     class Conditional # :nodoc:
+      # @return [void]
       def initialize lhs, jmp
         @lhs = lhs
         @jmp = jmp
       end
 
+      # @return [void]
       def call fisk; @lhs.call(fisk); end
+      # @return [void]
       def jump fisk, label; @jmp.call(fisk, label); end
     end
 
+    # @return [void]
     def RB_STATIC_SYM_P sym_loc
       mask = 0xFF
       lhs = ->(fisk) {
@@ -377,6 +419,7 @@ class TenderJIT
     end
 
     # Test if a flag has been set on the ep.
+    # @return [void]
     def VM_ENV_FLAG_SET_P ep_loc, flag
       ->(fisk) {
         temp_var { |tv|
@@ -389,6 +432,7 @@ class TenderJIT
     end
 
     # Set the flag +flag+ on the ep
+    # @return [void]
     def VM_ENV_FLAGS_SET ep_loc, flag
       temp_var { |tv|
         ep = pointer(ep_loc)
@@ -398,11 +442,13 @@ class TenderJIT
       }
     end
 
+    # @return [void]
     def RB_FIXNUM_P obj
       ->(fisk) { fisk.test(obj, fisk.uimm(RUBY_FIXNUM_FLAG)) }
     end
     alias :fixnum? :RB_FIXNUM_P
 
+    # @return [void]
     def if lhs, op = nil, rhs = nil
       else_label = push_label # else label
       finish_label = push_label
@@ -434,6 +480,7 @@ class TenderJIT
       self
     end
 
+    # @return [void]
     def if_eq lhs, rhs
       lhs = cast_to_fisk lhs
       rhs = cast_to_fisk rhs
@@ -455,6 +502,7 @@ class TenderJIT
       self
     end
 
+    # @return [void]
     def else
       finish_label = pop_label
       else_label = pop_label
@@ -463,6 +511,7 @@ class TenderJIT
       @fisk.put_label finish_label
     end
 
+    # @return [void]
     def endif
       finish_label = pop_label
       else_label = pop_label
@@ -475,6 +524,7 @@ class TenderJIT
     # Basically just:
     #   `mov(tmp_reg, operand)`
     #
+    # @return [void]
     def dereference operand
       @fisk.with_register do |tmp|
         @fisk.mov(tmp, operand)
@@ -484,6 +534,7 @@ class TenderJIT
 
     # Checks if the object at +loc+ is a special const. RAX is 0 if this is
     # *not* a special constant.
+    # @return [void]
     def RB_SPECIAL_CONST_P loc
       is_immediate = push_label
 
@@ -507,6 +558,7 @@ class TenderJIT
 
     # Finds the built-in type of the object stored in `loc`. The type is
     # placed in RAX
+    # @return [void]
     def RB_BUILTIN_TYPE loc
       reg = @fisk.rax
       @fisk.mov(reg, loc)
@@ -516,6 +568,7 @@ class TenderJIT
     end
 
     # Create a temporary variable
+    # @return [void]
     def temp_var name = "temp_var"
       tv = TemporaryVariable.new @fisk.register(name), Fiddle::TYPE_VOIDP, Fiddle::SIZEOF_VOIDP, 0, self
 
@@ -528,22 +581,26 @@ class TenderJIT
     end
 
     # Push a register on the machine stack
+    # @return [void]
     def push_reg reg
       @fisk.push reg.to_register
       @cfunc_call_stack_depth += reg.size
     end
 
     # Pop a register on the machine stack
+    # @return [void]
     def pop_reg reg
       @fisk.pop reg.to_register
       @cfunc_call_stack_depth -= reg.size
     end
 
+    # @return [void]
     def return
       @fisk.ret
     end
 
     # Push a value on the stack
+    # @return [void]
     def push val, name:, type: :unknown
       loc = @temp_stack.push name, type: type
 
@@ -556,6 +613,7 @@ class TenderJIT
       end
     end
 
+    # @return [void]
     def vm_get_ep ep_loc, level
       reg = ep_loc.to_register
 
@@ -569,6 +627,7 @@ class TenderJIT
     #  :call_reg: Specify an alternate register for the (long) function call; defaults
     #             to RAX.
     #
+    # @return [void]
     def call_cfunc func_loc, params, auto_align: true, call_reg: Fisk::Registers::RAX
       raise NotImplementedError, "too many parameters" if params.length > 6
       raise "No function location" unless func_loc > 0
@@ -602,6 +661,7 @@ class TenderJIT
     #
     # arguments:
     # - auto_align: true/false
+    # @return [void]
     def align_cfunc_call auto_align, &block
       if @cfunc_call_stack_depth % 8 != 0
         message = "Auto alignment is supported only for a stack depth multiple of 8 (current: #{@cfunc_call_stack_depth})"
@@ -621,12 +681,14 @@ class TenderJIT
       end
     end
 
+    # @return [void]
     def release_temp temp
       @fisk.release_register temp.reg
     end
 
     private
 
+    # @return [void]
     def push_label n = "label"
       @label_count += 1
       label = "#{n} #{@label_count}"
@@ -634,6 +696,7 @@ class TenderJIT
       @fisk.label label
     end
 
+    # @return [void]
     def pop_label
       @labels.pop
     end
@@ -645,6 +708,7 @@ class TenderJIT
     # params
     # - :only_64: move to register only if the immediate is 64 bits
     #
+    # @return [void]
     def maybe_reg op, only_64: false
       if op.immediate? && (op.size == 64 || !only_64)
         @fisk.with_register do |tmp|
@@ -656,6 +720,7 @@ class TenderJIT
       end
     end
 
+    # @return [void]
     def cast_to_fisk val
       case val
       when Fisk::Operand
@@ -667,6 +732,7 @@ class TenderJIT
       end
     end
 
+    # @return [void]
     def find_size type
       type == Fiddle::TYPE_VOIDP ? Fiddle::SIZEOF_VOIDP : type.byte_size
     end
@@ -674,6 +740,7 @@ class TenderJIT
     class Array
       attr_reader :reg, :type, :size
 
+      # @return [void]
       def initialize reg, type, size, offset, event_coordinator
         @reg    = reg
         @type   = type
@@ -682,10 +749,12 @@ class TenderJIT
         @ec     = event_coordinator
       end
 
+      # @return [void]
       def [] idx
         Fisk::M64.new(@reg, @offset + (idx * size))
       end
 
+      # @return [void]
       def []= idx, val
         @ec.write(self[idx], val)
       end
@@ -694,6 +763,7 @@ class TenderJIT
     class Pointer
       attr_reader :reg, :type, :size
 
+      # @return [void]
       def initialize reg, type, size, base, event_coordinator
         @reg    = reg
         @type   = type
@@ -703,16 +773,19 @@ class TenderJIT
       end
 
       # Yield a register that contains the address of this pointer
+      # @return [void]
       def with_address offset = 0
         @ec.with_ref(@reg, @base + (offset * size)) do |reg|
           yield reg
         end
       end
 
+      # @return [void]
       def [] idx
         Fisk::M64.new(@reg, @base + (idx * size))
       end
 
+      # @return [void]
       def []= idx, val
         val = val.to_register if val.is_a?(TemporaryVariable)
 
@@ -731,6 +804,7 @@ class TenderJIT
 
       # Mutates this pointer.  Subtracts the size from itself.  Similar to
       # C's `--` operator
+      # @return [void]
       def sub num = 1
         if num.is_a?(Fisk::Operand)
           @ec.sub reg, num
@@ -741,20 +815,24 @@ class TenderJIT
 
       # Mutates this pointer.  Adds the size to itself.  Similar to
       # C's `++` operator
+      # @return [void]
       def add num = 1
         @ec.add reg, size * num
       end
 
+      # @return [void]
       def mult num
         @ec.mult reg, num
       end
 
+      # @return [void]
       def with_ref offset
         @ec.with_ref(@reg, @base + (offset * size)) do |reg|
           yield Pointer.new(reg, type, size, 0, @ec)
         end
       end
 
+      # @return [void]
       def method_missing m, *values
         return super if type == Fiddle::TYPE_VOIDP
 
@@ -812,6 +890,7 @@ class TenderJIT
 
     class TemporaryVariable < Pointer
       # Write something to the temporary variable
+      # @return [void]
       def write operand
         if operand.is_a?(Fisk::Operand)
           @ec.write reg, operand
@@ -820,38 +899,49 @@ class TenderJIT
         end
       end
 
+      # @return [void]
       def write_address_of arg
         @ec.load_address_in reg, arg
       end
 
+      # @return [void]
       def and num
         @ec.and(reg, num)
       end
 
+      # @return [void]
       def or num
         @ec.or(reg, num)
       end
 
       # Shift right
+      # @return [void]
       def shr val
         @ec.shr reg, val
       end
 
       # Shift left
+      # @return [void]
       def shl val
         @ec.shl reg, val
       end
 
+      # @return [void]
       def to_register
         reg
       end
 
+      # @return [false]
       def memory?; false; end
+      # @return [false]
       def immediate?; false; end
+      # @return [true]
       def register?; true; end
+      # @return [true]
       def temp_register?; true; end
 
       # Release the temporary variable (say you are done using its value)
+      # @return [void]
       def release!
         @ec.release_temp self
       end

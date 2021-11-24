@@ -55,10 +55,12 @@ class TenderJIT
     CI_EMBED_ID_SHFT   = (CI_EMBED_TAG_bits + CI_EMBED_ARGC_bits + CI_EMBED_FLAG_bits)
     CI_EMBED_ID_MASK   = (1<<CI_EMBED_ID_bits) - 1
 
+    # @return [Boolean]
     def vm_ci_packed?
       to_i & 0x1 != 0
     end
 
+    # @return [void]
     def vm_ci_flag
       if vm_ci_packed?
         (to_i >> CI_EMBED_FLAG_SHFT) & CI_EMBED_FLAG_MASK
@@ -68,6 +70,7 @@ class TenderJIT
     end
 
     # Return a list of VM_CALL_* flags that are set on this call info object
+    # @return [Array]
     def vm_call_flags
       ci_flags = vm_ci_flag
 
@@ -89,6 +92,7 @@ class TenderJIT
     end
 
     # Can we support this type of call in the JIT?
+    # @return [Boolean]
     def supported_call?
       unhandled = [VM_CALL_ARGS_SPLAT,
                    #VM_CALL_ARGS_BLOCKARG,
@@ -108,6 +112,7 @@ class TenderJIT
       vm_ci_flag & unhandled == 0
     end
 
+    # @return [void]
     def vm_ci_mid
       if vm_ci_packed?
         (to_i >> CI_EMBED_ID_SHFT) & CI_EMBED_ID_MASK
@@ -116,6 +121,7 @@ class TenderJIT
       end
     end
 
+    # @return [void]
     def vm_ci_argc
       if vm_ci_packed?
         (to_i >> CI_EMBED_ARGC_SHFT) & CI_EMBED_ARGC_MASK
@@ -124,6 +130,7 @@ class TenderJIT
       end
     end
 
+    # @return [void]
     def is_args_kw_splat?
       (vm_ci_flag & VM_CALL_KWARG) != 0
     end
@@ -262,6 +269,7 @@ class TenderJIT
   attr_reader :jit_buffer, :exit_code
 
   # Returns true if the method has been compiled, otherwise false
+  # @return [void]
   def self.compiled? method
     rb_iseq = RubyVM::InstructionSequence.of(method)
     return false unless rb_iseq
@@ -271,12 +279,14 @@ class TenderJIT
   end
 
   # Throw away any compiled code associated with the method
+  # @return [void]
   def self.uncompile method
     rb_iseq = RubyVM::InstructionSequence.of(method)
     return false unless rb_iseq
     uncompile_iseq_t RTypedData.data(Fiddle.dlwrap(rb_iseq)).to_i
   end
 
+  # @return [void]
   def self.uncompile_iseq_t addr
     rb_iseq = RbISeqT.new(addr)
     rb_iseq.body.jit_func = 0
@@ -289,6 +299,7 @@ class TenderJIT
 
   CACHE_BUSTERS = Fisk::Helpers.jitbuffer(4096)
 
+  # @return [void]
   def self.print_str fisk, string, jit_buffer
     fisk.jmp(fisk.label(:after_bytes))
     pos = nil
@@ -313,6 +324,7 @@ class TenderJIT
   # any JIT code that cares about that value.  This method monkey patches
   # `rb_clear_constant_cache` because it is the only thing that mutates the
   # `ruby_vm_global_constant_state` global.
+  # @return [void]
   def self.install_const_state_change_handler
     # This function will invalidate JIT code on any iseq that needs to be
     # invalidated when ruby_vm_global_constant_state changes.
@@ -386,6 +398,7 @@ class TenderJIT
     func_memory[0, monkey_patch.bytesize] = monkey_patch
   end
 
+  # @return [void]
   def self.interpreter_call
     buf = StringIO.new(''.b)
 
@@ -430,6 +443,7 @@ class TenderJIT
   attr_reader :stats
   attr_reader :interpreter_call
 
+  # @return [void]
   def initialize
     @stats = STATS
     @stats.compiled_methods = 0
@@ -461,26 +475,32 @@ class TenderJIT
     @deferred_calls.deferred_call(temp_stack, &block)
   end
 
+  # @return [Hash]
   def exit_stats
     @exit_stats.to_h
   end
 
+  # @return [void]
   def compiled_methods
     @stats.compiled_methods
   end
 
+  # @return [void]
   def executed_methods
     @stats.executed_methods
   end
 
+  # @return [void]
   def recompiles
     @stats.recompiles
   end
 
+  # @return [void]
   def exits
     @stats.exits
   end
 
+  # @return [void]
   def compile method
     rb_iseq = RubyVM::InstructionSequence.of(method)
     return unless rb_iseq # it's a C func
@@ -489,20 +509,24 @@ class TenderJIT
     compile_iseq_t addr
   end
 
+  # @return [void]
   def uncompile method
     self.class.uncompile method
   end
 
+  # @return [void]
   def enable!
     MJIT_OPTIONS.on = 1
     MJIT_CALL_P[0] = 1
   end
 
+  # @return [void]
   def disable!
     MJIT_OPTIONS.on = 0
     MJIT_CALL_P[0] = 0
   end
 
+  # @return [void]
   def code_blocks iseq
     rb_iseq = RubyVM::InstructionSequence.of(iseq)
     addr = method_to_iseq_t(rb_iseq)
@@ -517,6 +541,7 @@ class TenderJIT
     end
   end
 
+  # @return [void]
   def uncompile_iseqs
     while addr = @compiled_iseq_addrs.shift
       self.class.uncompile_iseq_t addr
@@ -528,6 +553,7 @@ class TenderJIT
   # Caller saved regs:
   #    rdi, rsi, rdx, rcx, r8 - r10
 
+  # @return [void]
   def compile_iseq_t addr
     body = RbISeqT.new(addr).body
     ptr = body.variable.coverage.to_i
@@ -562,11 +588,13 @@ class TenderJIT
 
   # Convert a method to an rb_iseq_t *address* (so, just the memory location
   # where the iseq exists)
+  # @return [void]
   def method_to_iseq_t method
     addr = Fiddle.dlwrap(method)
     RTypedData.data(addr)
   end
 
+  # @return [void]
   def self.member_size struct, member
     struct.member_size member
   end

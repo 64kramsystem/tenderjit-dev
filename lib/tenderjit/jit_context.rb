@@ -11,6 +11,7 @@ class TenderJIT
       @temp_stack = temp_stack
     end
 
+    # @return [void]
     def flush
       write!
       @fisk = Fisk.new
@@ -22,6 +23,7 @@ class TenderJIT
       yield Runtime.new(fisk, @jit_buffer, @temp_stack)
     end
 
+    # @return [void]
     def write!
       fisk.release_all_registers
       fisk.assign_registers(TenderJIT::ISEQCompiler::SCRATCH_REGISTERS, local: true)
