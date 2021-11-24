@@ -29,6 +29,8 @@ class TenderJIT
       @jit_buffer = jit_buffer
     end
 
+    # @return [DeferralRequest]
+    # @yieldparam [JITContext]
     def deferred_call(temp_stack, &block)
       DeferralRequest.new(temp_stack.dup, @jit_buffer, block)
     end

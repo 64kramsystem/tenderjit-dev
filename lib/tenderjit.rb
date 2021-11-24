@@ -446,6 +446,7 @@ class TenderJIT
     @interpreter_call = INTERPRETER_CALL
 
     memory += SIZE / 3
+    # @type [DeferredCompilations]
     @deferred_calls = DeferredCompilations.new(Fisk::Helpers::JITBuffer.new(memory, SIZE / 3))
 
     memory += SIZE / 3
@@ -454,6 +455,8 @@ class TenderJIT
     @compiled_iseq_addrs = []
   end
 
+  # @yieldparam [JITContext]
+  # @return [DeferralRequest]
   def deferred_call temp_stack, &block
     @deferred_calls.deferred_call(temp_stack, &block)
   end

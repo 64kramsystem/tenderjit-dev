@@ -28,6 +28,7 @@ class TenderJIT
         @string_buffer = Fisk::Helpers::JITBuffer.new(memory, size)
       end
 
+      # @type [TenderJIT]
       @jit        = jit
       @temp_stack = TempStack.new
       @iseq       = addr
@@ -2705,6 +2706,7 @@ class TenderJIT
       fisk.write_to(@string_buffer)
     end
 
+    # @yieldparam [Runtime]
     def with_runtime
       rt = Runtime.new(Fisk.new, jit_buffer, @temp_stack)
       yield rt

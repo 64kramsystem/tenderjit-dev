@@ -48,6 +48,8 @@ class TenderJIT
     end
 
     # Converts the Ruby Number stored in +val+ to an int
+    # @param val [Fisk::Operand]
+    # @return [void]
     def NUM2INT val
       @fisk.sar(cast_to_fisk(val), @fisk.lit(1))
     end
@@ -63,6 +65,7 @@ class TenderJIT
       @fisk.inc(cast_to_fisk(val))
     end
 
+    # @return [Fisk::Operand]
     def return_value
       @fisk.rax
     end
@@ -94,6 +97,10 @@ class TenderJIT
       @fisk.mov Fisk::Registers::CALLER_SAVED.fetch(i), v
     end
 
+    # @param recv [ISEQCompiler]
+    # @param method_name [String]
+    # @param params [Array]
+    # @return [void]
     def rb_funcall recv, method_name, params
       @fisk.push REG_BP.to_register # alignment
       rb_funcall_without_alignment recv, method_name, params
@@ -130,6 +137,8 @@ class TenderJIT
         .call(@fisk.rax)
     end
 
+    # @param location [TemporaryVariable, Fisk::Operand, Integer]
+    # @return [void]
     def jump location
       case location
       when TemporaryVariable

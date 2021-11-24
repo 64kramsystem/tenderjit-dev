@@ -16,6 +16,8 @@ class TenderJIT
       @fisk = Fisk.new
     end
 
+    # @yieldparam [Runtime]
+    # @return [void]
     def with_runtime
       yield Runtime.new(fisk, @jit_buffer, @temp_stack)
     end
