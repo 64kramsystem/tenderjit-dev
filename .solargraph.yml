@@ -1,0 +1,6 @@
+---
+include:
+- "**/*.rb"
+exclude:
+- lib/tenderjit/ruby/**/*
+- test/**/*
