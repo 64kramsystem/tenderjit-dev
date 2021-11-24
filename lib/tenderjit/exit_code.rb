@@ -4,12 +4,14 @@ class TenderJIT
   class ExitCode
     attr_reader :stats_addr, :exit_stats_addr, :jit_buffer
 
+    # @return [void]
     def initialize jit_buffer, stats_addr, exit_stats_addr
       @jit_buffer      = jit_buffer
       @stats_addr      = stats_addr
       @exit_stats_addr = exit_stats_addr
     end
 
+    # @return [void]
     def make_exit exit_insn_name, exit_pc, stack_depth
       fisk = Fisk.new
 
@@ -49,6 +51,7 @@ class TenderJIT
       jump_location
     end
 
+    # @return [void]
     def print_str fisk, string
       fisk.jmp(fisk.label(:after_bytes))
       pos = nil

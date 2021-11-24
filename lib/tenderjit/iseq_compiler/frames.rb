@@ -4,6 +4,7 @@ class TenderJIT
       class Virtual
         attr_reader :iseq, :type, :_self, :specval, :cref_or_me, :pc, :local_size, :temp_stack
 
+        # @return [void]
         def initialize iseq, type, _self, specval, cref_or_me, pc, local_size, temp_stack
           @iseq       = iseq
           @type       = type
@@ -15,6 +16,7 @@ class TenderJIT
           @temp_stack = temp_stack
         end
 
+        # @return [void]
         def push rt
           new_sp = nil
 
@@ -86,6 +88,7 @@ class TenderJIT
           temp.release!
         end
 
+        # @return [void]
         def write_specval rt, stack_loc
           specval.write_specval(rt) do |val|
             rt.write stack_loc, val
@@ -94,6 +97,7 @@ class TenderJIT
       end
 
       class Block < Virtual
+        # @return [void]
         def initialize iseq, _self, specval, cref_or_me, pc, local_size, ts
           type = VM_FRAME_MAGIC_BLOCK
           super(iseq, type, _self, specval, cref_or_me, pc, local_size, ts)
@@ -101,6 +105,7 @@ class TenderJIT
       end
 
       class ISeq < Virtual
+        # @return [void]
         def initialize iseq, _self, specval, cref_or_me, pc, local_size, temp_stack
           type = VM_FRAME_MAGIC_METHOD | VM_ENV_FLAG_LOCAL
           super(iseq, type, _self, specval, cref_or_me, pc, local_size, temp_stack)
@@ -108,6 +113,7 @@ class TenderJIT
       end
 
       class CFunc < Virtual
+        # @return [void]
         def initialize _self, specval, cref_or_me, ts
           iseq       = 0
           type       = VM_FRAME_MAGIC_CFUNC | VM_FRAME_FLAG_CFRAME | VM_ENV_FLAG_LOCAL
@@ -118,6 +124,7 @@ class TenderJIT
       end
 
       class BMethod < Virtual
+        # @return [void]
         def initialize iseq, _self, specval, cref_or_me, pc, local_size, ts
           type = VM_FRAME_MAGIC_BLOCK | VM_FRAME_FLAG_BMETHOD,
 
@@ -128,6 +135,7 @@ class TenderJIT
 
     module SpecVals
       class Null
+        # @return [void]
         def write_specval rt
           yield 0
         end
@@ -136,22 +144,26 @@ class TenderJIT
       NULL = Null.new
 
       class PreviousEP
+        # @return [void]
         def initialize ep
           @ep = ep.to_i
         end
 
+        # @return [void]
         def write_specval rt
           yield VM_GUARDED_PREV_EP(@ep)
         end
 
         private
 
+        # @return [void]
         def VM_GUARDED_PREV_EP ep
           ep | 0x01
         end
       end
 
       class CapturedBlock
+        # @return [void]
         def initialize rb, blockiseq
           @rb        = rb
           @blockiseq = blockiseq
@@ -160,6 +172,7 @@ class TenderJIT
         # It's important that this gets called before the frame is pushed.
         # We need to write the block code reference to the *current* frame,
         # and the specval needs to be added to the stack of the *callee* frame
+        # @return [void]
         def write_specval rt
           cfp_ptr = rt.pointer(REG_CFP, type: RbControlFrameStruct)
           cfp_ptr.block_code = @blockiseq
@@ -171,6 +184,7 @@ class TenderJIT
 
         private
 
+        # @return [void]
         def VM_BH_FROM_ISEQ_BLOCK rt, self_ref
           rt.or self_ref, 0x01
         end

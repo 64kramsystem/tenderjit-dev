@@ -2,6 +2,7 @@ class TenderJIT
   class RubyInterpreterMetadataHelper
     # Returns a fingerprint of the current Ruby interpreter, based the Ruby description.
     #
+    # @return [void]
     def self.fingerprint
       # The information is on the verbose side (in particular, CC_VERSION_MESSAGE,
       # which identifies the compiler version), but it's overall obvious and

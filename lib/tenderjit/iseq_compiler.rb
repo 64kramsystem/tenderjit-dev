@@ -17,6 +17,7 @@ class TenderJIT
 
     attr_reader :blocks
 
+    # @return [void]
     def initialize jit, addr
       @iseq_path = Fiddle.dlunwrap CFuncs.rb_iseq_path(addr)
       @iseq_label = Fiddle.dlunwrap CFuncs.rb_iseq_label(addr)
@@ -47,12 +48,15 @@ class TenderJIT
       @objects = []
     end
 
+    # @return [void]
     def stats; @jit.stats; end
 
+    # @return [void]
     def __
       @fisk
     end
 
+    # @return [void]
     def compile
       if $DEBUG
         puts "Compiling iseq addr: #{sprintf("%#x", @iseq)}"
@@ -97,6 +101,7 @@ class TenderJIT
       attr_reader :entry_idx, :jit_position, :start_address
       attr_accessor :end_address
 
+      # @return [void]
       def initialize entry_idx, jit_position, start_address
         @entry_idx     = entry_idx
         @jit_position  = jit_position
@@ -104,9 +109,11 @@ class TenderJIT
         @end_address   = end_address
       end
 
+      # @return [void]
       def done?; @end_address; end
     end
 
+    # @return [void]
     def resume_compiling insn_idx, temp_stack
       @temp_stack = temp_stack
       @insn_idx   = insn_idx
@@ -158,6 +165,7 @@ class TenderJIT
       @blocks.last.end_address = jit_buffer.address
     end
 
+    # @return [void]
     def flush
       @fisk.release_all_registers
       @fisk.assign_registers(SCRATCH_REGISTERS, local: true)
@@ -165,33 +173,41 @@ class TenderJIT
       @fisk = Fisk.new
     end
 
+    # @return [void]
     def current_insn
       @insns[@insn_idx]
     end
 
+    # @return [void]
     def insn_name
       rb.insn_name current_insn
     end
 
+    # @return [void]
     def current_pc
       @current_pc
     end
 
+    # @return [void]
     def next_idx
       @insn_idx + rb.insn_len(current_insn)
     end
 
+    # @return [void]
     def next_pc
       len = rb.insn_len(current_insn)
       @current_pc + len * Fiddle::SIZEOF_VOIDP
     end
 
+    # @return [void]
     def jit_buffer
       @jit.jit_buffer
     end
 
+    # @return [void]
     def exits; @jit.exit_code; end
 
+    # @return [void]
     def make_exit exit_insn_name, exit_pc, temp_stack
       jump_addr = exits.make_exit(exit_insn_name, exit_pc, temp_stack.size)
       Fisk.new { |_|
@@ -202,6 +218,7 @@ class TenderJIT
 
     IVarRequest = Struct.new(:id, :current_pc, :next_pc, :stack_loc, :deferred_entry)
 
+    # @return [void]
     def compile_getinstancevariable recv, req, loc
       if rb.RB_SPECIAL_CONST_P(recv)
         raise NotImplementedError, "no ivar reads on non-heap objects"
@@ -262,6 +279,7 @@ class TenderJIT
       code_start
     end
 
+    # @return [void]
     def handle_putstring str
       addr = Fiddle::Handle::DEFAULT["rb_ec_str_resurrect"]
       with_runtime do |rt|
@@ -271,40 +289,49 @@ class TenderJIT
     end
 
     class CompileSend < Struct.new(:call_info, :temp_stack, :current_pc, :next_pc, :blockiseq, :deferred_entry)
+      # @return [void]
       def make_exit exits, name = "send"
         exits.make_exit(name, current_pc, temp_stack.size)
       end
 
+      # @return [void]
       def has_blockiseq?
         blockiseq != 0
       end
 
+      # @return [void]
       def has_block?
         has_blockiseq? || has_blockarg?
       end
 
+      # @return [void]
       def has_blockarg?
         call_info.vm_ci_flag & VM_CALL_ARGS_BLOCKARG == VM_CALL_ARGS_BLOCKARG
       end
     end
 
     class CompileSendWithoutBlock < CompileSend
+      # @return [void]
       def initialize call_info, temp_stack, current_pc, next_pc
         super(call_info, temp_stack, current_pc, next_pc, 0)
       end
 
+      # @return [void]
       def make_exit exits, name = "opt_send_without_block"
         exits.make_exit(name, current_pc, temp_stack.size)
       end
 
+      # @return [void]
       def has_block?; false; end
     end
 
 
+    # @return [void]
     def compile_opt_send_without_block cfp, req, loc
       compile_send cfp, req, loc
     end
 
+    # @return [void]
     def handle_send call_data, blockiseq
       cd = RbCallData.new call_data
       ci = RbCallInfo.new cd.ci
@@ -345,11 +372,13 @@ class TenderJIT
     end
 
     class CompileBlock < Struct.new(:call_info, :temp_stack, :current_pc, :next_pc, :deferred_entry)
+      # @return [void]
       def make_exit exits, name = "invokeblock"
         exits.make_exit(name, current_pc, temp_stack.size)
       end
     end
 
+    # @return [void]
     def compile_invokeblock_no_handler cfp, req, loc
       side_exit = req.make_exit(exits)
 
@@ -384,6 +413,7 @@ class TenderJIT
       method_entry_addr
     end
 
+    # @return [void]
     def compile_invokeblock_iseq_handler iseq_ptr, captured, return_loc, req, temp_stack
       ci = req.call_info
 
@@ -492,6 +522,7 @@ class TenderJIT
       method_entry_addr
     end
 
+    # @return [void]
     def compile_invokeblock cfp, req, loc
       ep = rb.VM_EP_LEP(RbControlFrameStruct.ep(cfp))
       bh = rb.VM_ENV_BLOCK_HANDLER(ep)
@@ -518,6 +549,7 @@ class TenderJIT
       end
     end
 
+    # @return [void]
     def handle_invokeblock call_data
       cd = RbCallData.new call_data
       ci = RbCallInfo.new cd.ci
@@ -549,6 +581,7 @@ class TenderJIT
       __.mov(loc, __.rax)
     end
 
+    # @return [void]
     def compile_iseq cfp, req, loc
       @jit.compile_iseq_t req.iseq_ptr
 
@@ -557,6 +590,7 @@ class TenderJIT
       loc + JMP_BYTES
     end
 
+    # @return [void]
     def handle_getglobal gid
       addr = Fiddle::Handle::DEFAULT["rb_gvar_get"]
       with_runtime do |rt|
@@ -565,6 +599,7 @@ class TenderJIT
       end
     end
 
+    # @return [void]
     def handle_setglobal gid
       global_name = Fiddle.dlunwrap(CFuncs.rb_id2str(gid))
       stack_val   = @temp_stack.first.type
@@ -580,6 +615,7 @@ class TenderJIT
       end
     end
 
+    # @return [void]
     def handle_dup
       last = @temp_stack.peek(0)
       with_runtime do |rt|
@@ -587,6 +623,7 @@ class TenderJIT
       end
     end
 
+    # @return [void]
     def handle_concatstrings num
       loc = @temp_stack[num - 1]
       num.times { @temp_stack.pop }
@@ -599,6 +636,7 @@ class TenderJIT
       end
     end
 
+    # @return [void]
     def compile_setinstancevariable recv, req, loc
       if rb.RB_SPECIAL_CONST_P(recv)
         raise NotImplementedError, "no ivar reads on non-heap objects"
@@ -659,6 +697,7 @@ class TenderJIT
       code_start
     end
 
+    # @return [void]
     def handle_setinstancevariable id, ic
       req = IVarRequest.new(id, current_pc, next_pc, @temp_stack.size)
 
@@ -696,6 +735,7 @@ class TenderJIT
       __.jmp(__.absolute(deferred.entry.to_i))
     end
 
+    # @return [void]
     def handle_checktype type
       loc = @temp_stack.pop
 
@@ -720,6 +760,7 @@ class TenderJIT
       end
     end
 
+    # @return [void]
     def handle_getinstancevariable id, ic
       req = IVarRequest.new(id, current_pc, next_pc, @temp_stack.size)
 
@@ -774,6 +815,7 @@ class TenderJIT
       __.mov(write_loc, __.rax)
     end
 
+    # @return [void]
     def compile_opt_aref cfp, req, patch_loc
       stack = RbControlFrameStruct.sp(cfp)
 
@@ -831,6 +873,7 @@ class TenderJIT
       entry_location
     end
 
+    # @return [void]
     def compile_opt_aset cfp, req, patch_loc
       stack = RbControlFrameStruct.sp(cfp)
 
@@ -896,14 +939,18 @@ class TenderJIT
     end
 
     class CompileOptAref < Struct.new(:call_info, :temp_stack, :current_pc, :next_pc, :deferred_entry)
+      # @return [void]
       def has_block?; false; end
+      # @return [void]
       def has_blockarg?; false; end
 
+      # @return [void]
       def make_exit exits, name = "opt_aref"
         exits.make_exit(name, current_pc, temp_stack.size)
       end
     end
 
+    # @return [void]
     def handle_opt_aref call_data
       cd = RbCallData.new call_data
       ci = RbCallInfo.new cd.ci
@@ -948,6 +995,7 @@ class TenderJIT
       __.mov(loc, __.rax)
     end
 
+    # @return [void]
     def handle_opt_send_without_block call_data
       cd = RbCallData.new call_data
       ci = RbCallInfo.new cd.ci
@@ -1010,10 +1058,12 @@ class TenderJIT
       __.mov(loc, __.rax)
     end
 
+    # @return [void]
     def topn stack, i
       Fiddle::Pointer.new(stack - (Fiddle::SIZEOF_VOIDP * (i + 1))).ptr
     end
 
+    # @return [void]
     def compile_jump stack, req, patch_loc
       target_block = @blocks.find { |b| b.entry_idx == req.jump_idx }
 
@@ -1033,6 +1083,7 @@ class TenderJIT
       target_block.start_address
     end
 
+    # @return [void]
     def patch_source_jump jit_buffer, at:, to: jit_buffer.address
       ## Patch the source location to jump here
       pos = jit_buffer.pos
@@ -1042,6 +1093,7 @@ class TenderJIT
       return_loc
     end
 
+    # @return [void]
     def compile_call_iseq iseq, req, argc, iseq_ptr, recv, cme, return_loc
       # `vm_call_iseq_setup`
       param_size = iseq.body.param.size
@@ -1116,6 +1168,7 @@ class TenderJIT
       end
     end
 
+    # @return [void]
     def compile_call_cfunc iseq, req, argc, iseq_ptr, recv, cme, return_loc
       cfunc = RbMethodDefinitionStruct.new(cme.def).body.cfunc
 
@@ -1163,6 +1216,7 @@ class TenderJIT
       end
     end
 
+    # @return [void]
     def handle_anytostring
       with_runtime do |rt|
         rt.call_cfunc Fiddle::Handle::DEFAULT["rb_obj_as_string_result"],
@@ -1171,6 +1225,7 @@ class TenderJIT
       end
     end
 
+    # @return [void]
     def handle_objtostring cd
       handle_opt_send_without_block cd
     end
@@ -1178,6 +1233,7 @@ class TenderJIT
     class CompileISeqBlock < Struct.new(:iseq_ptr, :temp_stack)
     end
 
+    # @return [void]
     def compile_call_optimized cfp, iseq, req, argc, iseq_ptr, recv, cme, return_loc
       case optimized_method_type(cme.def)
       when rb.c("OPTIMIZED_METHOD_TYPE_SEND")
@@ -1278,6 +1334,7 @@ class TenderJIT
       end
     end
 
+    # @return [void]
     def compile_call_bmethod iseq, compile_request, argc, iseq_ptr, recv, cme, return_loc
       opt_pc     = 0 # we don't handle optional parameters rn
       proc_obj = RbMethodDefinitionStruct.new(cme.def).body.bmethod.proc
@@ -1331,6 +1388,7 @@ class TenderJIT
       end
     end
 
+    # @return [void]
     def compile_send cfp, req, loc
       stack = RbControlFrameStruct.sp(cfp)
 
@@ -1526,8 +1584,10 @@ class TenderJIT
       method_entry_addr
     end
 
+    # @return [void]
     def handle_nop; end
 
+    # @return [void]
     def handle_newhash num
       with_runtime do |rt|
         if num == 0
@@ -1562,6 +1622,7 @@ class TenderJIT
       end
     end
 
+    # @return [void]
     def handle_newarray num
       address = Fiddle::Handle::DEFAULT["rb_ec_ary_new_from_values"]
 
@@ -1591,6 +1652,7 @@ class TenderJIT
 
     # params:
     # - `flag`: end exclusion; see `range.c#range_init()`.
+    # @return [void]
     def handle_newrange flag
       rb_range_new = Fiddle::Handle::DEFAULT["rb_range_new"]
 
@@ -1603,6 +1665,7 @@ class TenderJIT
       end
     end
 
+    # @return [void]
     def handle_duparray ary
       with_runtime do |rt|
         rt.call_cfunc rb.symbol_address("rb_ary_resurrect"), [Fisk::Imm64.new(ary)]
@@ -1610,6 +1673,7 @@ class TenderJIT
       end
     end
 
+    # @return [void]
     def handle_duphash hash
       with_runtime do |rt|
         rt.call_cfunc rb.symbol_address("rb_hash_resurrect"), [Fisk::Imm64.new(hash)]
@@ -1617,6 +1681,7 @@ class TenderJIT
       end
     end
 
+    # @return [void]
     def handle_tostring
       rb_obj_as_string_result = Fiddle::Handle::DEFAULT["rb_obj_as_string_result"]
 
@@ -1634,6 +1699,7 @@ class TenderJIT
     # - `cnt`: number of values; they're at least 2 - when only one expression is
     #          interpolated (e.g. `/#{foo/`), an empty string is pushed first to
     #          the stack.
+    # @return [void]
     def handle_toregexp opt, cnt
       rb_ary_tmp_new_from_values = Fiddle::Handle::DEFAULT["rb_ary_tmp_new_from_values"]
       rb_reg_new_ary = Fiddle::Handle::DEFAULT["rb_reg_new_ary"]
@@ -1669,6 +1735,7 @@ class TenderJIT
       end
     end
 
+    # @return [void]
     def handle_intern
       rb_str_intern = Fiddle::Handle::DEFAULT["rb_str_intern"]
 
@@ -1683,6 +1750,7 @@ class TenderJIT
     class BranchUnless < Struct.new(:jump_idx, :jump_type, :temp_stack)
     end
 
+    # @return [void]
     def handle_branchunless dst
       insn = @insns[@insn_idx]
       len    = rb.insn_len(insn)
@@ -1733,6 +1801,7 @@ class TenderJIT
     class BranchIf < Struct.new(:jump_idx, :jump_type, :temp_stack)
     end
 
+    # @return [void]
     def handle_branchif dst
       insn = @insns[@insn_idx]
       len    = rb.insn_len(insn)
@@ -1801,6 +1870,7 @@ class TenderJIT
     class HandleOptGetinlinecache < Struct.new(:jump_idx, :jump_type, :temp_stack, :ic, :current_pc)
     end
 
+    # @return [void]
     def compile_opt_getinlinecache stack, req, patch_loc
       patch_loc = patch_loc - jit_buffer.memory.to_i
 
@@ -1840,6 +1910,7 @@ class TenderJIT
       jump_location
     end
 
+    # @return [void]
     def handle_opt_getinlinecache dst, ic
       insn = @insns[@insn_idx]
       len    = rb.insn_len(insn)
@@ -1909,6 +1980,7 @@ class TenderJIT
     class HandleJump < Struct.new(:jump_idx, :jump_type, :temp_stack)
     end
 
+    # @return [void]
     def handle_jump dst
       insn = @insns[@insn_idx]
       len    = rb.insn_len(insn)
@@ -1938,16 +2010,19 @@ class TenderJIT
       :stop
     end
 
+    # @return [void]
     def handle_putnil
       with_runtime do |rt|
         rt.push Fisk::Imm64.new(Qnil), name: T_NIL
       end
     end
 
+    # @return [void]
     def handle_pop
       @temp_stack.pop
     end
 
+    # @return [void]
     def handle_opt_minus call_data
       ts = @temp_stack
 
@@ -1985,6 +2060,7 @@ class TenderJIT
       __.put_label(:done)
     end
 
+    # @return [void]
     def handle_opt_plus call_data
       ts = @temp_stack
 
@@ -2022,6 +2098,7 @@ class TenderJIT
       __.put_label(:done)
     end
 
+    # @return [void]
     def handle_opt_mult call_data
       ts = @temp_stack
 
@@ -2043,12 +2120,14 @@ class TenderJIT
       end
     end
 
+    # @return [void]
     def handle_opt_div call_data
       perform_division(call_data) do |rt, dividend, divisor|
         rt.div dividend, divisor
       end
     end
 
+    # @return [void]
     def handle_opt_mod call_data
       perform_division(call_data) do |rt, dividend, divisor|
         rt.mod dividend, divisor
@@ -2062,6 +2141,7 @@ class TenderJIT
     #
     # Used by `opt_div` and `opt_mod`.
     #
+    # @return [void]
     def perform_division(call_data, &block)
       _exit_addr = exits.make_exit "opt_div", current_pc, @temp_stack.size
 
@@ -2083,6 +2163,7 @@ class TenderJIT
     private :perform_division
 
     # Guard stack types. They need to be in "stack" order (backwards)
+    # @return [void]
     def guard_two_fixnum
       ts = @temp_stack
 
@@ -2113,6 +2194,7 @@ class TenderJIT
       end
     end
 
+    # @return [void]
     def compare_fixnum
       guard_two_fixnum do
         __.with_register do |reg0|
@@ -2139,34 +2221,42 @@ class TenderJIT
       end
     end
 
+    # @return [void]
     def handle_opt_gt call_data
       compare_fixnum { |reg0, reg1| __.cmovg(reg0, reg1) }
     end
 
+    # @return [void]
     def handle_opt_ge call_data
       compare_fixnum { |reg0, reg1| __.cmovge(reg0, reg1) }
     end
 
+    # @return [void]
     def handle_opt_lt call_data
       compare_fixnum { |reg0, reg1| __.cmovl(reg0, reg1) }
     end
 
+    # @return [void]
     def handle_opt_le call_data
       compare_fixnum { |reg0, reg1| __.cmovle(reg0, reg1) }
     end
 
+    # @return [void]
     def handle_opt_eq call_data
       handle_opt_send_without_block call_data
     end
 
+    # @return [void]
     def handle_opt_not call_data
       handle_opt_send_without_block call_data
     end
 
+    # @return [void]
     def handle_opt_length call_data
       handle_opt_send_without_block call_data
     end
 
+    # @return [void]
     def handle_opt_succ call_data
       value = @temp_stack.peek(0).loc
 
@@ -2193,18 +2283,21 @@ class TenderJIT
       end
     end
 
+    # @return [void]
     def handle_putobject_INT2FIX_1_
       with_runtime do |rt|
         rt.push Fisk::Imm64.new(0x3), name: 1, type: T_FIXNUM
       end
     end
 
+    # @return [void]
     def handle_putobject_INT2FIX_0_
       with_runtime do |rt|
         rt.push Fisk::Imm64.new(0x1), name: 0, type: T_FIXNUM
       end
     end
 
+    # @return [void]
     def handle_setlocal_WC_0 idx
       addr = exits.make_exit("setlocal_WC_0", current_pc, @temp_stack.size)
 
@@ -2225,6 +2318,7 @@ class TenderJIT
         .mov(__.m64(reg_ep, -(Fiddle::SIZEOF_VOIDP * idx)), reg_local)
     end
 
+    # @return [void]
     def handle_getlocal_WC_0 idx
       with_runtime do |rt|
         cfp_ptr = rt.pointer(REG_CFP, type: RbControlFrameStruct)
@@ -2244,6 +2338,7 @@ class TenderJIT
       end
     end
 
+    # @return [void]
     def handle_setlocal_WC_1 idx
       with_runtime do |rt|
         cfp_ptr = rt.pointer(REG_CFP, type: RbControlFrameStruct)
@@ -2265,6 +2360,7 @@ class TenderJIT
       end
     end
 
+    # @return [void]
     def handle_getlocal_WC_1 idx
       with_runtime do |rt|
         cfp_ptr = rt.pointer(REG_CFP, type: RbControlFrameStruct)
@@ -2290,6 +2386,7 @@ class TenderJIT
       end
     end
 
+    # @return [void]
     def handle_putself
       with_runtime do |rt|
         # Get self from the CFP
@@ -2297,6 +2394,7 @@ class TenderJIT
       end
     end
 
+    # @return [void]
     def handle_putobject literal
       object_type = rb.rb_type literal
 
@@ -2306,6 +2404,7 @@ class TenderJIT
     end
 
     # `leave` instruction
+    # @return [void]
     def handle_leave
       # FIXME: We need to check interrupts and exit
 
@@ -2327,6 +2426,7 @@ class TenderJIT
       :stop
     end
 
+    # @return [void]
     def handle_concatarray
       ary2_loc = @temp_stack.pop
       ary1_loc = @temp_stack.pop
@@ -2334,6 +2434,7 @@ class TenderJIT
       vm_concat_array ary1_loc, ary2_loc
     end
 
+    # @return [void]
     def vm_concat_array ary1_loc, ary2_loc
       check_cfunc_addr = Fiddle::Handle::DEFAULT["rb_check_to_array"]
       newarray_cfunc_addr = Fiddle::Handle::DEFAULT["rb_ary_new_from_args"]
@@ -2397,6 +2498,7 @@ class TenderJIT
       end
     end
 
+    # @return [void]
     def handle_splatarray flag
       pop_loc = @temp_stack.pop
       push_loc = @temp_stack.push(:object, type: T_ARRAY)
@@ -2404,6 +2506,7 @@ class TenderJIT
       vm_splat_array pop_loc, push_loc, flag
     end
 
+    # @return [void]
     def vm_splat_array read_loc, store_loc, flag
       with_runtime do |rt|
         rb_check_to_array = rb.symbol_address("rb_check_to_array")
@@ -2433,6 +2536,7 @@ class TenderJIT
       end
     end
 
+    # @return [void]
     def handle_swap
       with_runtime do |rt|
         temp = rt.temp_var
@@ -2445,6 +2549,7 @@ class TenderJIT
       end
     end
 
+    # @return [void]
     def handle_opt_aset call_data
       cd = RbCallData.new call_data
       ci = RbCallInfo.new cd.ci
@@ -2488,6 +2593,7 @@ class TenderJIT
       __.mov(loc, __.rax)
     end
 
+    # @return [void]
     def handle_setn n
       item = @temp_stack.peek(0)
       with_runtime do |rt|
@@ -2495,6 +2601,7 @@ class TenderJIT
       end
     end
 
+    # @return [void]
     def handle_dupn num
       from_top = @temp_stack.first(num)
       with_runtime do |rt|
@@ -2504,6 +2611,7 @@ class TenderJIT
       end
     end
 
+    # @return [void]
     def handle_adjuststack n
       n.times { @temp_stack.pop }
     end
@@ -2511,6 +2619,7 @@ class TenderJIT
     class GetBlockParamProxy < Struct.new(:idx, :level, :temp_stack, :deferred_entry, :exit_addr)
     end
 
+    # @return [void]
     def compile_getblockparamproxy cfp, req, loc
       peek_ep = RbControlFrameStruct.ep(cfp)
 
@@ -2582,6 +2691,7 @@ class TenderJIT
       entry_loc
     end
 
+    # @return [void]
     def handle_getblockparamproxy idx, level
       with_runtime do |rt|
         cfp_ptr = rt.pointer(REG_CFP, type: RbControlFrameStruct)
@@ -2621,6 +2731,7 @@ class TenderJIT
       end
     end
 
+    # @return [void]
     def handle_getblockparam idx, level
       exit_addr = exits.make_exit("getblockparam", current_pc, @temp_stack.size)
       push_loc = @temp_stack.push("proc", type: T_DATA)
@@ -2662,6 +2773,7 @@ class TenderJIT
     end
 
     # Call a C function at `func_loc` with `params`. Return value will be in RAX
+    # @return [void]
     def call_cfunc func_loc, params, fisk = __
       raise NotImplementedError, "too many parameters" if params.length > 6
       raise "No function location" unless func_loc > 0
@@ -2675,16 +2787,20 @@ class TenderJIT
       fisk.pop(fisk.rsp) # alignment
     end
 
+    # @return [void]
     def rb; Internals; end
 
+    # @return [void]
     def member_size struct, member
       TenderJIT.member_size(struct, member)
     end
 
+    # @return [void]
     def break fisk = __
       fisk.int fisk.lit(3)
     end
 
+    # @return [void]
     def print_str string
       Fisk.new { |__|
         __.jmp(__.absolute(@string_buffer.address))
@@ -2707,6 +2823,7 @@ class TenderJIT
     end
 
     # @yieldparam [Runtime]
+    # @return [void]
     def with_runtime
       rt = Runtime.new(Fisk.new, jit_buffer, @temp_stack)
       yield rt
@@ -2714,10 +2831,12 @@ class TenderJIT
     end
 
     if RbMethodDefinitionStruct.member("body").type.member?("optimize_type")
+      # @return [void]
       def optimized_method_type mdef
         RbMethodDefinitionStruct.new(mdef).body.optimize_type
       end
     else
+      # @return [void]
       def optimized_method_type mdef
         RbMethodDefinitionStruct.new(mdef).body.optimized.type
       end

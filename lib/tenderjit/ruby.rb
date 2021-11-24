@@ -14,6 +14,7 @@ require "tenderjit/ruby/#{folder}/insn_info"
 
 class TenderJIT
   class Ruby
+    # @return [void]
     def self.read_encoded_instructions
       addr = Ruby::SYMBOLS["rb_vm_get_insns_address_table"]
       func = Fiddle::Function.new(addr, [], Fiddle::TYPE_VOIDP)
@@ -39,6 +40,7 @@ class TenderJIT
     FALSE_REDEFINED_OP_FLAG   = (1 << 11)
     PROC_REDEFINED_OP_FLAG    = (1 << 12)
 
+    # @return [void]
     def initialize
       encoded_instructions = self.class.read_encoded_instructions
 
@@ -47,51 +49,63 @@ class TenderJIT
       @insn_to_ops          = Hash[encoded_instructions.zip(Ruby::INSN_OP_TYPES)]
     end
 
+    # @return [void]
     def struct name
       Ruby::STRUCTS.fetch(name)
     end
 
+    # @return [void]
     def symbol_address name
       Ruby::SYMBOLS.fetch(name)
     end
 
+    # @return [void]
     def c name
       Ruby::OTHER_CONSTANTS.fetch(name) { Ruby.const_get name }
     end
 
+    # @return [void]
     def constants
       Ruby.constants
     end
 
+    # @return [void]
     def insn_name encoded_name
       @insn_to_name.fetch encoded_name
     end
 
+    # @return [void]
     def insn_len encoded_name
       @insn_len.fetch encoded_name
     end
 
+    # @return [void]
     def insn_op_types encoded_name
       @insn_to_ops.fetch encoded_name
     end
 
+    # @return [void]
     def BASIC_OP_UNREDEFINED_P op, klass
       # (LIKELY((GET_VM()->redefined_flag[(op)]&(klass)) == 0))
       ruby_vm_redefined_flag[op] & klass == 0
     end
 
+    # @return [void]
     def RB_IMMEDIATE_P obj_addr
       (obj_addr & RUBY_IMMEDIATE_MASK) != 0
     end
 
+    # @return [void]
     def RB_TEST obj_addr
       (obj_addr & ~Qnil) != 0
     end
 
+    # @return [void]
     def RB_SPECIAL_CONST_P obj_addr
       self.RB_IMMEDIATE_P(obj_addr) || !self.RB_TEST(obj_addr)
     end
 
+    # @return [void]
     def rb_class_of obj_addr
       if !self.RB_SPECIAL_CONST_P(obj_addr)
         RBasic.klass(obj_addr).to_i
@@ -117,12 +131,14 @@ class TenderJIT
       end
     end
 
+    # @return [void]
     def VM_ENV_LOCAL_P ep
       flags = Fiddle.read_ptr(ep, VM_ENV_DATA_INDEX_FLAGS * Fiddle::SIZEOF_VOIDP)
       raise "Wrong flags" unless RB_FIXNUM_P(flags) # Check this is a fixnum
       flags & VM_ENV_FLAG_LOCAL == VM_ENV_FLAG_LOCAL
     end
 
+    # @return [void]
     def VM_EP_LEP ep
       while !VM_ENV_LOCAL_P(ep)
         raise NotImplementedError
@@ -133,6 +149,7 @@ class TenderJIT
     end
 
     # https://github.com/ruby/ruby/blob/1038c4864f6f2e88d78e3dfd6b6fb94d7173aaa2/vm_core.h#L1263
+    # @return [void]
     def VM_ENV_FLAGS ep, flag
       flags = Fiddle.read_ptr(ep, VM_ENV_DATA_INDEX_FLAGS * Fiddle::SIZEOF_VOIDP)
       flags & flag != 0
@@ -140,11 +157,13 @@ class TenderJIT
 
     IMEMO_MASK = 0x0f # internal/imemo.h
 
+    # @return [void]
     def imemo_type imemo
       (RBasic.flags(imemo) >> RUBY_FL_USHIFT) & IMEMO_MASK
     end
 
     # https://github.com/ruby/ruby/blob/844588f9157b364244a7d34ee0fcc70ccc2a7dd9/vm_insnhelper.c#L707
+    # @return [void]
     def check_cref cref
       return if cref == Qfalse
       raise "cref should be IMEMO!" unless RB_BUILTIN_TYPE(cref) == T_IMEMO
@@ -161,6 +180,7 @@ class TenderJIT
       end
     end
 
+    # @return [void]
     def vm_env_cref ep
       while !VM_ENV_LOCAL_P(ep)
         raise
@@ -168,15 +188,18 @@ class TenderJIT
       check_cref Fiddle.read_ptr(ep, VM_ENV_DATA_INDEX_ME_CREF * Fiddle::SIZEOF_VOIDP)
     end
 
+    # @return [void]
     def vm_get_ep ep, lv
       lv.times { ep = GET_PREV_EP(ep) }
       ep
     end
 
+    # @return [void]
     def VM_ENV_BLOCK_HANDLER ep
       Fiddle.read_ptr(ep, VM_ENV_DATA_INDEX_SPECVAL * Fiddle::SIZEOF_VOIDP)
     end
 
+    # @return [void]
     def vm_block_handler_type bh_ptr
       # https://github.com/ruby/ruby/blob/cbf2078a25c3efb12f45b643a636ff7bb4d402b6/vm_core.h#L1511-L1512
 
@@ -193,27 +216,33 @@ class TenderJIT
       end
     end
 
+    # @return [void]
     def VM_BH_IFUNC_P bh
       bh & 0x03 == 0x03
     end
 
+    # @return [void]
     def VM_BH_ISEQ_BLOCK_P bh
       bh & 0x03 == 0x01
     end
 
+    # @return [void]
     def VM_BH_TO_ISEQ_BLOCK bh
       bh & ~0x03
     end
 
+    # @return [void]
     def RB_FIXNUM_P obj_addr
       0 != obj_addr & RUBY_FIXNUM_FLAG
     end
     alias :fixnum? :RB_FIXNUM_P
 
+    # @return [void]
     def NIL_P obj_addr
       obj_addr == Qnil
     end
 
+    # @return [void]
     def RB_SYMBOL_P obj_addr
       RB_STATIC_SYM_P(obj_addr) || RB_DYNAMIC_SYM_P(obj_addr)
     end
@@ -221,21 +250,25 @@ class TenderJIT
     UINTPTR_MAX = 0xFFFFFFFFFFFFFFFF # on macos anyway
     RBIMPL_VALUE_FULL = UINTPTR_MAX
 
+    # @return [void]
     def RB_STATIC_SYM_P obj_addr
       mask = ~(RBIMPL_VALUE_FULL << RUBY_SPECIAL_SHIFT)
       (obj_addr & mask) == RUBY_SYMBOL_FLAG
     end
 
+    # @return [void]
     def RB_DYNAMIC_SYM_P obj_addr
       return false if RB_SPECIAL_CONST_P(obj_addr)
 
       RB_BUILTIN_TYPE(obj_addr) == T_SYMBOL
     end
 
+    # @return [void]
     def RB_FLONUM_P obj_addr
       (obj_addr & RUBY_FLONUM_MASK) == RUBY_FLONUM_FLAG
     end
 
+    # @return [void]
     def RB_BUILTIN_TYPE obj_addr
       raise if RB_SPECIAL_CONST_P(obj_addr)
 
@@ -243,6 +276,7 @@ class TenderJIT
     end
 
     # Basically the same as RB_BUILTIN_TYPE but handles special consts.
+    # @return [void]
     def rb_type obj_addr
       if RB_SPECIAL_CONST_P(obj_addr)
         case obj_addr
@@ -265,11 +299,13 @@ class TenderJIT
       end
     end
 
+    # @return [void]
     def rb_current_vm
       Fiddle.read_ptr Ruby::SYMBOLS["ruby_current_vm_ptr"], 0
     end
     alias :GET_VM :rb_current_vm
 
+    # @return [void]
     def ruby_vm_redefined_flag
       RbVmT.new(self.GET_VM).redefined_flag
     end

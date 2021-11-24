@@ -6,6 +6,7 @@ class TenderJIT
     class DeferralRequest
       attr_reader :entry
 
+      # @return [void]
       def initialize temp_stack, jit_buf, block
         @jit_buffer = jit_buf
         @temp_stack    = temp_stack
@@ -13,6 +14,7 @@ class TenderJIT
         @block = block
       end
 
+      # @return [void]
       def call
         fisk = Fisk.new
         @temp_stack.flush fisk
@@ -25,12 +27,14 @@ class TenderJIT
       end
     end
 
+    # @return [void]
     def initialize jit_buffer
       @jit_buffer = jit_buffer
     end
 
     # @return [DeferralRequest]
     # @yieldparam [JITContext]
+    # @return [void]
     def deferred_call(temp_stack, &block)
       DeferralRequest.new(temp_stack.dup, @jit_buffer, block)
     end
