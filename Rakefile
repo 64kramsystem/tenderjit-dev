@@ -88,15 +88,15 @@ end
 #   in this case, only one file must be found.
 #
 task :debug, [:test_suite_file] => test_files + [:compile] do |_, args|
-  test_suite_file =
-    case args.test_suite_file
-    when %r{/}
-      args.test_suite_file
-    else
-      files = FileList["test/**/#{args.test_suite_file}_test.rb"]
-      raise "Only one file must be found (found: #{files}" if files.size != 1
-      files.first
-    end
+  # test_suite_file =
+  #   case args.test_suite_file
+  #   when %r{/}
+  #     args.test_suite_file
+  #   else
+  #     files = FileList["test/**/#{args.test_suite_file}_test.rb"]
+  #     raise "Only one file must be found (found: #{files}" if files.size != 1
+  #     files.first
+  #   end
 
   library_dirs = %w[lib test] + DEBUG_LIBRARIES.map do |lib|
     "#{Gem::Specification.find_by_name(lib).gem_dir}/lib"
@@ -118,9 +118,11 @@ task :debug, [:test_suite_file] => test_files + [:compile] do |_, args|
   # -v: verbose mode
   # -I: load paths
   #
-  Bundler.with_unbundled_env do
-    command = "lldb -o run ruby -- -d -v -I #{library_dirs.join(":")} #{test_suite_file}"
-    system command
+  100.times do
+    Bundler.with_unbundled_env do
+      command = "lldb -o 'settings set target.process.stop-on-exec false' -o run -o q ruby -- -d -v -I #{library_dirs.join(":")} $(which bundle) exec rake test"
+      system command
+    end
   end
 end
 
